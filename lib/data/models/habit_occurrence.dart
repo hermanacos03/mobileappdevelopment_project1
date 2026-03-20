@@ -1,15 +1,17 @@
+import '../../core/constants/enums.dart';
+
 class HabitOccurrence {
   final int? id;
-  final int habitId;          // Foreign key to Habit
-  final String date;          // "2024-03-18" (YYYY-MM-DD)
-  final String status;        // "pending", "done", "missed"
-  final String? completedAt;  // timestamp when user marked it done
+  final int habitId;
+  final String date;
+  final HabitStatus status;
+  final String? completedAt;
 
   HabitOccurrence({
     this.id,
     required this.habitId,
     required this.date,
-    this.status = "pending",
+    this.status = HabitStatus.pending,
     this.completedAt,
   });
 
@@ -18,7 +20,7 @@ class HabitOccurrence {
       'id': id,
       'habit_id': habitId,
       'date': date,
-      'status': status,
+      'status': status.name,
       'completed_at': completedAt,
     };
   }
@@ -28,7 +30,9 @@ class HabitOccurrence {
       id: map['id'],
       habitId: map['habit_id'],
       date: map['date'],
-      status: map['status'],
+      status: HabitStatus.values.firstWhere(
+        (e) => e.name == map['status'],
+      ),
       completedAt: map['completed_at'],
     );
   }
