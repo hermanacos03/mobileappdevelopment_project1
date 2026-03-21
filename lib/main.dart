@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-
+import 'database_helper.dart';
 void main() {
   runApp(const MyApp());
 }
@@ -26,6 +26,21 @@ class Habits extends StatefulWidget {
 class _HabitsState extends State<Habits> {
   int selectedIndex = 0;
   List<String> habits = [];
+  @override
+  void initState() {
+    super.initState();
+    loadHabits();
+  }
+
+  Future<void> loadHabits() async {
+    final savedHabits = await DatabaseHelper.instance.getHabits();
+
+    setState(() {
+      habits = savedHabits.map((habit) => habit['name'] as String).toList();
+    });
+
+    debugPrint('Loaded habits: $savedHabits');
+  }
 
   Widget _buildPage() {
     switch (selectedIndex) {
@@ -146,21 +161,31 @@ class _HabitsState extends State<Habits> {
               child: const Icon(Icons.cancel, size: 20),
             ),
             TextButton(
-              onPressed: () {
+              onPressed: () async {
                 if (formKey.currentState!.validate()) {
                   final habitTitle = nameController.text.trim();
-
                   final habitFrequency = frequencyController.text.trim();
                   final habitTime = timeController.text.trim();
 
-                  setState(() {
-                    habits.add(habitTitle);
+                  await DatabaseHelper.instance.insertHabit({
+                    'name': habitTitle,
+                    'description': habitFrequency,
+                    'repeat_type': 'daily',
+                    'day_of_week': null,
+                    'day_of_month': null,
+                    'month': null,
+                    'time_of_day': habitTime,
+                    'created_at': DateTime.now().toIso8601String(),
                   });
+                  debugPrint('Ok that habit worked: $habitTitle at $habitTime (freq: $habitFrequency)');
 
-                  // these are still available here if you need them later
+                  await loadHabits();
+
+                  debugPrint('Habit saved to database');
                   debugPrint('Habit title: $habitTitle');
                   debugPrint('Habit frequency: $habitFrequency');
                   debugPrint('Habit time: $habitTime');
+
 
                   Navigator.pop(context);
                 }
