@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'database_helper.dart';
+
 void main() {
   runApp(const MyApp());
 }
@@ -26,6 +27,8 @@ class Habits extends StatefulWidget {
 class _HabitsState extends State<Habits> {
   int selectedIndex = 0;
   List<String> habits = [];
+  String selectedHabit = '';
+
   @override
   void initState() {
     super.initState();
@@ -35,44 +38,107 @@ class _HabitsState extends State<Habits> {
   Future<void> loadHabits() async {
     final savedHabits = await DatabaseHelper.instance.getHabits();
 
+    final habitList =
+        savedHabits.map((habit) => habit['name'] as String).toList();
+
+    habitList.sort((a, b) => b.length.compareTo(a.length));
+
     setState(() {
-      habits = savedHabits.map((habit) => habit['name'] as String).toList();
+      habits = habitList;
     });
 
-    debugPrint('Loaded habits: $savedHabits');
+    debugPrint('Sorted habits: $habitList');
   }
 
   Widget _buildPage() {
     switch (selectedIndex) {
       case 0:
-         final now = DateTime.now();
+        final now = DateTime.now();
 
-          final time =
-              '${(now.hour % 12 == 0 ? 12 : now.hour % 12)}:${now.minute.toString().padLeft(2, '0')} '
-              '${now.hour >= 12 ? 'PM' : 'AM'}';
+        final time =
+            '${(now.hour % 12 == 0 ? 12 : now.hour % 12)}:${now.minute.toString().padLeft(2, '0')} '
+            '${now.hour >= 12 ? 'PM' : 'AM'}';
 
-          final date =
-              '${now.month}/${now.day}/${now.year}';
+        final date = '${now.month}/${now.day}/${now.year}';
 
-          return Text(
-            '$date\n$time',
+        return Column(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
+            Text(
+              '$date\n$time',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              height: 60,
+              child: ElevatedButton(
+                onPressed: addHabit,
+                child: const Icon(Icons.add, size: 35),
+              ),
+            ),
+            const SizedBox(height: 15),
+            Expanded(
+              child: habits.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'No habits added yet',
+                        style: TextStyle(fontSize: 18),
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: habits.length,
+                      itemBuilder: (context, index) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: SizedBox(
+                            width: double.infinity,
+                            height: 60,
+                            child: ElevatedButton(
+                              onPressed: () {
+                                setState(() {
+                                  selectedHabit = habits[index];
+                                  selectedIndex = 1;
+                                });
+                              },
+                              child: Text(
+                                habits[index],
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        );
+
+      case 1:
+        return Column(
+          children: [ Text(
+            selectedHabit.isEmpty ? 'No habit selected' : selectedHabit,
             textAlign: TextAlign.center,
             style: const TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
             ),
-          );
+          ),
+          ],
+        );
 
-      case 1:
-        return const Text(
-          'Page1',
-          style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-        );
       case 2:
-        return const Text(
-          'Page2',
-          style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+        return const Center(
+          child: Text(
+            'Page2',
+            style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+          ),
         );
+
       default:
         return const SizedBox.shrink();
     }
@@ -123,9 +189,9 @@ class _HabitsState extends State<Habits> {
                         if (value == null || value.trim().isEmpty) {
                           return 'Please enter a frequency';
                         }
-                        if(int.tryParse(value)==null){
-                            return 'Please numbers only';
-                          }
+                        if (int.tryParse(value) == null) {
+                          return 'Please numbers only';
+                        }
                         return null;
                       },
                     ),
@@ -177,7 +243,10 @@ class _HabitsState extends State<Habits> {
                     'time_of_day': habitTime,
                     'created_at': DateTime.now().toIso8601String(),
                   });
-                  debugPrint('Ok that habit worked: $habitTitle at $habitTime (freq: $habitFrequency)');
+
+                  debugPrint(
+                    'Ok that habit worked: $habitTitle at $habitTime (freq: $habitFrequency)',
+                  );
 
                   await loadHabits();
 
@@ -185,7 +254,6 @@ class _HabitsState extends State<Habits> {
                   debugPrint('Habit title: $habitTitle');
                   debugPrint('Habit frequency: $habitFrequency');
                   debugPrint('Habit time: $habitTime');
-
 
                   Navigator.pop(context);
                 }
@@ -213,10 +281,7 @@ class _HabitsState extends State<Habits> {
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
           children: [
-            _buildPage(),
-            const SizedBox(height: 10),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -236,43 +301,9 @@ class _HabitsState extends State<Habits> {
                 ),
               ],
             ),
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              height: 60,
-              child: ElevatedButton(
-                onPressed: addHabit,
-                child: const Icon(Icons.add, size: 35),
-              ),
-            ),
             const SizedBox(height: 15),
             Expanded(
-              child: habits.isEmpty
-                  ? const Center(
-                      child: Text(
-                        'No habits added yet',
-                        style: TextStyle(fontSize: 18),
-                      ),
-                    )
-                  : ListView.builder(
-                      itemCount: habits.length,
-                      itemBuilder: (context, index) {
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: SizedBox(
-                            width: double.infinity,
-                            height: 60,
-                            child: ElevatedButton(
-                              onPressed: () {},
-                              child: Text(
-                                habits[index],
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
+              child: _buildPage(),
             ),
           ],
         ),
