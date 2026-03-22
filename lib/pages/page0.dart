@@ -2,15 +2,17 @@ import 'package:flutter/material.dart';
 import '../functions/dateTime.dart';
 
 class Page0 extends StatelessWidget {
-  final List<String> habits;
+  final List<Map<String, dynamic>> habits;
   final VoidCallback onAddHabit;
-  final Function(String) onHabitPressed;
+  final Function(Map<String, dynamic>) onHabitPressed;
+  final Function(int) onDeleteHabit;
 
   const Page0({
     super.key,
     required this.habits,
     required this.onAddHabit,
     required this.onHabitPressed,
+    required this.onDeleteHabit,
   });
 
   @override
@@ -49,20 +51,38 @@ class Page0 extends StatelessWidget {
               : ListView.builder(
                   itemCount: habits.length,
                   itemBuilder: (context, index) {
+                    final habit = habits[index];
+
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 12),
-                      child: SizedBox(
-                        width: double.infinity,
-                        height: 60,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            onHabitPressed(habits[index]);
-                          },
-                          child: Text(
-                            habits[index],
-                            textAlign: TextAlign.center,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: SizedBox(
+                              height: 60,
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  onHabitPressed(habit);
+                                },
+                                child: Text(
+                                  habit['name'] ?? 'Unnamed Habit',
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ),
                           ),
-                        ),
+                          const SizedBox(width: 10),
+                          SizedBox(
+                            width: 60,
+                            height: 60,
+                            child: ElevatedButton(
+                              onPressed: () {
+                                onDeleteHabit(habit['id']);
+                              },
+                              child: const Icon(Icons.delete),
+                            ),
+                          ),
+                        ],
                       ),
                     );
                   },
