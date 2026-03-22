@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../functions/addHabit.dart';
+import '../functions/next_Reset.dart';
 import '../functions/loadHabits.dart';
 import '../database_helper.dart';
 import 'page0.dart';
@@ -28,33 +29,57 @@ class _PageControllerappState extends State<PageControllerapp> {
     startHabitTimer();
   }
 
+  int getSecondsLeft(Map<String, dynamic> habit) {
+    final nextReset = habit['nextReset'];
+    if (nextReset == null) return 0;
+
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final secondsLeft = ((nextReset - now) / 1000).floor();
+
+    return secondsLeft > 0 ? secondsLeft : 0;
+  }
+
   Future<void> loadHabits() async {
     final habitList = await loadHabitsFromDatabase();
 
     setState(() {
       habits = habitList.map<Map<String, dynamic>>((habit) {
         final habitMap = habit as Map<String, dynamic>;
+        final loadedTime = (habitMap['time_of_day'] ?? '0000').toString();
 
         return {
           ...habitMap,
           'streak': habitMap['streak'] ?? 0,
-          'secondsLeft': habitMap['secondsLeft'] ?? 30,
+          'habitFrequency': habitMap['habitFrequency'] ?? 1,
+          'frequencyCounter': habitMap['frequencyCounter'] ?? 0,
+          'time': loadedTime,
+          'nextReset': calculateNextReset(loadedTime),
         };
       }).toList();
-    });
 
-    debugPrint('Sorted habits: $habitList');
+      if (selectedHabit != null) {
+        final selectedId = selectedHabit!['id'];
+        final match = habits.where((habit) => habit['id'] == selectedId);
+
+        if (match.isNotEmpty) {
+          selectedHabit = match.first;
+        }
+      }
+    });
   }
 
   void startHabitTimer() {
+    timer?.cancel();
+
     timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       setState(() {
         for (int i = 0; i < habits.length; i++) {
-          if ((habits[i]['secondsLeft'] ?? 0) > 0) {
-            habits[i]['secondsLeft']--;
-          } else {
-            habits[i]['streak'] = 0;
-            habits[i]['secondsLeft'] = 30;
+          final secondsLeft = getSecondsLeft(habits[i]);
+
+          if (secondsLeft <= 0) {
+            habits[i]['frequencyCounter'] = 0;
+            habits[i]['nextReset'] =
+                calculateNextReset(habits[i]['time'].toString());
           }
         }
 
@@ -70,10 +95,23 @@ class _PageControllerappState extends State<PageControllerapp> {
     });
   }
 
+  void increaseFrequencyCounter(Map<String, dynamic> habit) {
+    setState(() {
+      final currentCount =
+          int.tryParse((habit['frequencyCounter'] ?? 0).toString()) ?? 0;
+      habit['frequencyCounter'] = currentCount + 1;
+
+      if (selectedHabit != null && selectedHabit!['id'] == habit['id']) {
+        selectedHabit = habit;
+      }
+    });
+  }
+
   void keepHabitStreak(Map<String, dynamic> habit) {
     setState(() {
       habit['streak'] = (habit['streak'] ?? 0) + 1;
-      habit['secondsLeft'] = 30;
+      habit['frequencyCounter'] = 0;
+      habit['nextReset'] = calculateNextReset(habit['time'].toString());
 
       if (selectedHabit != null && selectedHabit!['id'] == habit['id']) {
         selectedHabit = habit;
@@ -116,10 +154,20 @@ class _PageControllerappState extends State<PageControllerapp> {
 
       case 1:
         return Page1(
-          selectedHabit: selectedHabit,
+          selectedHabit: selectedHabit == null
+              ? null
+              : {
+                  ...selectedHabit!,
+                  'secondsLeft': getSecondsLeft(selectedHabit!),
+                },
           onKeepStreak: () {
             if (selectedHabit != null) {
               keepHabitStreak(selectedHabit!);
+            }
+          },
+          onIncreaseFrequencyCounter: () {
+            if (selectedHabit != null) {
+              increaseFrequencyCounter(selectedHabit!);
             }
           },
         );

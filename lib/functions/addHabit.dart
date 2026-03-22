@@ -41,7 +41,7 @@ Future<void> addHabit({
                   TextFormField(
                     controller: frequencyController,
                     decoration: const InputDecoration(
-                      labelText: "Frequency",
+                      labelText: "Frequency of habit",
                       hintText: "1(once a day), 2(twice a day)",
                       border: OutlineInputBorder(),
                     ),
@@ -60,8 +60,8 @@ Future<void> addHabit({
                     controller: timeController,
                     maxLines: 1,
                     decoration: const InputDecoration(
-                      labelText: "What time of day for habit",
-                      hintText: "0130 (hrs mins)",
+                      labelText: "When do you want the habit to end",
+                      hintText: "@2230 (hrs mins)",
                       border: OutlineInputBorder(),
                     ),
                     validator: (value) {
@@ -70,6 +70,19 @@ Future<void> addHabit({
                       }
                       if (value.length != 4) {
                         return 'Please enter exactly 4 digits';
+                      }
+                      int firstDigit = int.parse(value[0]);
+                      int secondDigit = int.parse(value[1]);
+                      int thirdDigit = int.parse(value[2]);
+                      int fourthDigit = int.parse(value[3]);
+                      if (firstDigit>2) {
+                        return 'This is not in range of time(hours area 1)';
+                      }
+                      if (firstDigit==2 && secondDigit>3) {
+                        return 'This is not in range of time(hours area 2)';
+                      }
+                      if (thirdDigit>6) {
+                        return 'This is not in range of time(minutes area 1)';
                       }
                       return null;
                     },
