@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_heatmap_calendar/flutter_heatmap_calendar.dart';
 
 import '../../data/repositories/habit_repository.dart';
-import '../../data/models/habit_occurrence.dart';
 import '../../data/models/habit.dart';
 
 import 'habit_details_page.dart';
