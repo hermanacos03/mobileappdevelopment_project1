@@ -21,6 +21,7 @@ class _HabitDetailsPageState extends State<HabitDetailsPage> {
 
   int currentStreak = 0;
   List<models.Badge> badges = [];
+  bool doneToday = false;
 
   late int nextResetMillis;
   Timer? countdownTimer;
@@ -41,11 +42,13 @@ class _HabitDetailsPageState extends State<HabitDetailsPage> {
   Future<void> loadHabitDetails() async {
     final streak = await repository.getHabitStreak(widget.habit.id!);
     final badgeList = await repository.getBadges(widget.habit.id!);
+    final completedToday = await repository.isHabitDoneToday(widget.habit.id!);
 
     setState(() {
       currentStreak = streak;
       badges = badgeList;
-      nextResetMillis = calculateNextReset(widget.habit); // Calculate next occurrence
+      doneToday = completedToday;
+      nextResetMillis = calculateNextReset(widget.habit);
     });
   }
 
@@ -58,30 +61,26 @@ class _HabitDetailsPageState extends State<HabitDetailsPage> {
       final nextResetDate = DateTime.fromMillisecondsSinceEpoch(nextResetMillis);
 
       if (now.isAfter(nextResetDate)) {
-        // Recalculate next occurrence when current one passed
         nextResetMillis = calculateNextReset(widget.habit);
+        loadHabitDetails();
       }
 
-      setState(() {}); // refresh countdown display
+      setState(() {});
     });
   }
 
   Future<void> markDoneOnce() async {
     final now = DateTime.now().toIso8601String();
 
-    // Mark this habit as done for today in SQLite
     await repository.markHabitDone(widget.habit.id!, now);
-
-    // Check and award badges if milestones reached
     await repository.checkAndAwardBadges(widget.habit.id!);
-
-    // Reload streaks, badges, and next reset
     await loadHabitDetails();
   }
 
   String get countdown {
     final now = DateTime.now();
-    final diff = DateTime.fromMillisecondsSinceEpoch(nextResetMillis).difference(now);
+    final diff =
+        DateTime.fromMillisecondsSinceEpoch(nextResetMillis).difference(now);
 
     if (diff.isNegative) return "00:00:00";
 
@@ -89,9 +88,9 @@ class _HabitDetailsPageState extends State<HabitDetailsPage> {
     final minutes = diff.inMinutes % 60;
     final seconds = diff.inSeconds % 60;
 
-    return '${hours.toString().padLeft(2,'0')}:'
-           '${minutes.toString().padLeft(2,'0')}:'
-           '${seconds.toString().padLeft(2,'0')}';
+    return '${hours.toString().padLeft(2, '0')}:'
+        '${minutes.toString().padLeft(2, '0')}:'
+        '${seconds.toString().padLeft(2, '0')}';
   }
 
   @override
@@ -109,7 +108,9 @@ class _HabitDetailsPageState extends State<HabitDetailsPage> {
                   builder: (_) => HabitSettingsPage(habit: widget.habit),
                 ),
               );
-              if (updated != null) loadHabitDetails();
+              if (updated != null) {
+                loadHabitDetails();
+              }
             },
           ),
         ],
@@ -120,7 +121,10 @@ class _HabitDetailsPageState extends State<HabitDetailsPage> {
           children: [
             Text(
               widget.habit.name,
-              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 12),
             Text(
@@ -138,27 +142,43 @@ class _HabitDetailsPageState extends State<HabitDetailsPage> {
               style: const TextStyle(fontSize: 18),
             ),
             const SizedBox(height: 16),
-            const Text('Badges', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+            const Text(
+              'Badges',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             const SizedBox(height: 12),
             badges.isEmpty
                 ? const Text('No badges earned yet')
                 : Wrap(
                     spacing: 16,
                     runSpacing: 16,
-                    children: badges
-                        .map((b) => StreakBadge(badge: b))
-                        .toList(),
+                    children: badges.map((b) => StreakBadge(badge: b)).toList(),
                   ),
             const SizedBox(height: 24),
             Text(
               'Next Reset: $countdown',
-              style: const TextStyle(fontSize: 18, color: Colors.grey),
+              style: const TextStyle(
+                fontSize: 18,
+                color: Colors.grey,
+              ),
             ),
             const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: markDoneOnce,
-              child: const Text('Done Once'),
-            ),
+            doneToday
+                ? const Text(
+                    'Streak done for the day',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green,
+                    ),
+                  )
+                : ElevatedButton(
+                    onPressed: markDoneOnce,
+                    child: const Text('Done Once'),
+                  ),
           ],
         ),
       ),
