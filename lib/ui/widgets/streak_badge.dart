@@ -17,16 +17,16 @@ class StreakBadge extends StatelessWidget {
     String assetPath;
     switch (badge.milestone) {
       case 5:
-        assetPath = 'assets/badge_5.png';
+        assetPath = 'assets/badge_5.jpg';
         break;
       case 10:
-        assetPath = 'assets/badge_10.png';
+        assetPath = 'assets/badge_10.jpg';
         break;
       case 20:
-        assetPath = 'assets/badge_20.png';
+        assetPath = 'assets/badge_20.jpg';
         break;
       default:
-        assetPath = 'assets/badge_default.png';
+        assetPath = 'assets/badge_default.jpg';
     }
 
     return Column(
