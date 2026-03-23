@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import '../functions/dateTime.dart';
 
-class Page0 extends StatelessWidget {
+class HomePage extends StatelessWidget {
   final List<Map<String, dynamic>> habits;
   final VoidCallback onAddHabit;
   final Function(Map<String, dynamic>) onHabitPressed;
   final Function(int) onDeleteHabit;
 
-  const Page0({
+  const HomePage({
     super.key,
     required this.habits,
     required this.onAddHabit,
