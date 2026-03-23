@@ -238,7 +238,7 @@ class _PageControllerappState extends State<PageControllerapp> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Page Switcher'),
+        title: const Text('Habit Mastery League'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
