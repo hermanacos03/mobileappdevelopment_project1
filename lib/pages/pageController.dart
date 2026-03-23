@@ -4,7 +4,9 @@ import '../functions/addHabit.dart';
 import '../functions/next_Reset.dart';
 import '../functions/loadHabits.dart';
 import '../database_helper.dart';
-import 'page0.dart';
+import '../data/models/habit.dart';
+import 'home_page.dart';
+import 'habit_settings_page.dart';
 import 'page1.dart';
 import 'page2.dart';
 
@@ -133,19 +135,33 @@ class _PageControllerappState extends State<PageControllerapp> {
   Widget _buildPage() {
     switch (selectedIndex) {
       case 0:
-        return Page0(
+        return HomePage(
           habits: habits,
-          onAddHabit: () {
-            addHabit(
-              context: context,
-              onHabitSaved: loadHabits,
+          onAddHabit: () async {
+            final result = await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const HabitSettingsPage(),
+              ),
             );
+
+            if (result == true) {
+              await loadHabits();
+            }
           },
-          onHabitPressed: (habit) {
-            setState(() {
-              selectedHabit = habit;
-              selectedIndex = 1;
-            });
+          onHabitPressed: (habitMap) async {
+            final habit = Habit.fromMap(habitMap);
+
+            final result = await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => HabitSettingsPage(habit: habit),
+              ),
+            );
+
+            if (result == true) {
+              await loadHabits();
+            }
           },
           onDeleteHabit: (id) async {
             await deleteHabitFromList(id);
