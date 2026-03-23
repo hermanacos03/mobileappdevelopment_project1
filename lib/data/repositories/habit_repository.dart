@@ -59,6 +59,11 @@ class HabitRepository {
     return result.map((map) => HabitOccurrence.fromMap(map)).toList();
   }
 
+  Future<List<HabitOccurrence>> getAllOccurrences() async {
+    final result = await dbHelper.getAllOccurrences();
+    return result.map((map) => HabitOccurrence.fromMap(map)).toList();
+  }
+
   // =========================
   // STREAK LOGIC
   // =========================

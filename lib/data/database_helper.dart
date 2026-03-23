@@ -145,6 +145,15 @@ class DatabaseHelper {
     );
   }
 
+  Future<List<Map<String, dynamic>>> getAllOccurrences() async {
+    final db = await instance.database;
+
+    return await db.query(
+      'habit_occurrences',
+      orderBy: 'date ASC',
+    );
+  }
+
   // =========================
   // BADGE METHODS
   // =========================
