@@ -51,7 +51,6 @@ This app is designed for **students and individuals** who want to develop better
 
 * Rule-based habit suggestions
 * Daily motivational messages
-* Pattern-based recommendations
 
 ### 🎨 UI/UX
 
@@ -133,12 +132,6 @@ This app is designed for **students and individuals** who want to develop better
 
 * View activity over time
 * Tap suggested habit card to navigate
-
----
-
-### 🤖 AI Page
-
-* View suggestions
 
 ---
 

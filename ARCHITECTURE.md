@@ -223,16 +223,9 @@ We use a **rule-based AI system** instead of complex ML models.
    * Micro-goals
    * Motivational messages
 
-### 📌 Example:
-
-```text
-"If user misses habit 3 times → suggest easier goal"
-```
-
 ### ✅ Why Rule-Based AI?
 
 * Simple to implement
-* Fully explainable (important for grading)
 * No external dependencies
 * Works offline
 
