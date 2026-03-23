@@ -1,8 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../data/models/habit.dart';
 import '../../data/models/badge.dart' as models;
 import '../../data/repositories/habit_repository.dart';
-
+import '../../functions/next_Reset.dart';
 import 'habit_settings_page.dart';
 import '../widgets/streak_badge.dart';
 
@@ -19,13 +20,22 @@ class _HabitDetailsPageState extends State<HabitDetailsPage> {
   final HabitRepository repository = HabitRepository();
 
   int currentStreak = 0;
-  int bestStreak = 0;
   List<models.Badge> badges = [];
+
+  late int nextResetMillis;
+  Timer? countdownTimer;
 
   @override
   void initState() {
     super.initState();
     loadHabitDetails();
+    setupNextReset();
+  }
+
+  @override
+  void dispose() {
+    countdownTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> loadHabitDetails() async {
@@ -34,9 +44,46 @@ class _HabitDetailsPageState extends State<HabitDetailsPage> {
 
     setState(() {
       currentStreak = streak;
-      bestStreak = streak; // For now, assume best streak = current streak
       badges = badgeList;
     });
+  }
+
+  void setupNextReset() {
+    nextResetMillis = calculateNextReset(widget.habit.timeOfDay);
+
+    countdownTimer?.cancel();
+    countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      setState(() {});
+    });
+  }
+
+  Future<void> markDoneOnce() async {
+    final now = DateTime.now().toIso8601String();
+
+    // Mark this habit as done today in SQLite
+    await repository.markHabitDone(widget.habit.id!, now);
+
+    // Check and award badges if milestones reached
+    await repository.checkAndAwardBadges(widget.habit.id!);
+
+    // Reload streaks and badges
+    await loadHabitDetails();
+  }
+
+  String get countdown {
+    final now = DateTime.now();
+    final diff = DateTime.fromMillisecondsSinceEpoch(nextResetMillis).difference(now);
+
+    if (diff.isNegative) return "00:00:00";
+
+    final hours = diff.inHours;
+    final minutes = diff.inMinutes % 60;
+    final seconds = diff.inSeconds % 60;
+
+    return '${hours.toString().padLeft(2,'0')}:'
+           '${minutes.toString().padLeft(2,'0')}:'
+           '${seconds.toString().padLeft(2,'0')}';
   }
 
   @override
@@ -48,18 +95,13 @@ class _HabitDetailsPageState extends State<HabitDetailsPage> {
           IconButton(
             icon: const Icon(Icons.edit),
             onPressed: () async {
-              // Navigate to HabitSettingsPage for editing
               final updated = await Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (_) => HabitSettingsPage(habit: widget.habit),
                 ),
               );
-
-              if (updated != null) {
-                // Refresh habit details after edit
-                await loadHabitDetails();
-              }
+              if (updated != null) loadHabitDetails();
             },
           ),
         ],
@@ -70,8 +112,7 @@ class _HabitDetailsPageState extends State<HabitDetailsPage> {
           children: [
             Text(
               widget.habit.name,
-              style: const TextStyle(
-                  fontSize: 28, fontWeight: FontWeight.bold),
+              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
             Text(
@@ -88,16 +129,8 @@ class _HabitDetailsPageState extends State<HabitDetailsPage> {
               'Current Streak: $currentStreak',
               style: const TextStyle(fontSize: 18),
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Best Streak: $bestStreak',
-              style: const TextStyle(fontSize: 18),
-            ),
             const SizedBox(height: 16),
-            const Text(
-              'Badges',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-            ),
+            const Text('Badges', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
             badges.isEmpty
                 ? const Text('No badges earned yet')
@@ -108,6 +141,16 @@ class _HabitDetailsPageState extends State<HabitDetailsPage> {
                         .map((b) => StreakBadge(badge: b))
                         .toList(),
                   ),
+            const SizedBox(height: 24),
+            Text(
+              'Next Reset: $countdown',
+              style: const TextStyle(fontSize: 18, color: Colors.grey),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: markDoneOnce,
+              child: const Text('Done Once'),
+            ),
           ],
         ),
       ),
