@@ -4,6 +4,7 @@ import '../../data/repositories/habit_repository.dart';
 import 'home_page.dart';
 import 'habit_settings_page.dart';
 import 'habit_details_page.dart';
+import 'heatmap_page.dart';
 
 class AppPageController extends StatefulWidget {
   const AppPageController({super.key});
@@ -109,7 +110,7 @@ class _AppPageControllerState extends State<AppPageController>
             onDeleteHabit: deleteHabit,
           ),
 
-          const Center(child: Text("Heatmap Page")),
+          HeatmapScreen(),
           const Center(child: Text("AI Page")),
         ],
       ),
