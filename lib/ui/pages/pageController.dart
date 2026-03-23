@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../functions/addHabit.dart';
-import '../functions/next_Reset.dart';
-import '../functions/loadHabits.dart';
-import '../database_helper.dart';
-import '../data/models/habit.dart';
+import '../../functions/addHabit.dart';
+import '../../functions/next_Reset.dart';
+import '../../functions/loadHabits.dart';
+import '../../database_helper.dart';
+import '../../data/models/habit.dart';
 import 'home_page.dart';
 import 'habit_settings_page.dart';
 import 'page1.dart';
