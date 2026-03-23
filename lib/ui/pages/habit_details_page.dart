@@ -45,29 +45,37 @@ class _HabitDetailsPageState extends State<HabitDetailsPage> {
     setState(() {
       currentStreak = streak;
       badges = badgeList;
+      nextResetMillis = calculateNextReset(widget.habit); // Calculate next occurrence
     });
   }
 
   void setupNextReset() {
-    nextResetMillis = calculateNextReset(widget.habit.timeOfDay);
-
     countdownTimer?.cancel();
     countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
-      setState(() {});
+
+      final now = DateTime.now();
+      final nextResetDate = DateTime.fromMillisecondsSinceEpoch(nextResetMillis);
+
+      if (now.isAfter(nextResetDate)) {
+        // Recalculate next occurrence when current one passed
+        nextResetMillis = calculateNextReset(widget.habit);
+      }
+
+      setState(() {}); // refresh countdown display
     });
   }
 
   Future<void> markDoneOnce() async {
     final now = DateTime.now().toIso8601String();
 
-    // Mark this habit as done today in SQLite
+    // Mark this habit as done for today in SQLite
     await repository.markHabitDone(widget.habit.id!, now);
 
     // Check and award badges if milestones reached
     await repository.checkAndAwardBadges(widget.habit.id!);
 
-    // Reload streaks and badges
+    // Reload streaks, badges, and next reset
     await loadHabitDetails();
   }
 
