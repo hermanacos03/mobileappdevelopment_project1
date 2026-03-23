@@ -88,7 +88,6 @@ lib/ui/
   * Habit Settings Page
   * Habit Detail Page
   * Heatmap Page
-  * AI Page
 * Reusable Widgets
 
 ### ✅ Why?

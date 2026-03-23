@@ -7,7 +7,7 @@ Habit Mastery League is a **gamified habit tracking mobile application** built u
 * Habit tracking
 * Visual heatmaps
 * Streak systems
-* AI-driven suggestions
+* AI-driven motivation messages
 
 This app is designed for **students and individuals** who want to develop better habits in a structured, engaging, and data-driven way — all **offline** without cloud dependency.
 
