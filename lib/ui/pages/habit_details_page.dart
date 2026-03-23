@@ -19,6 +19,8 @@ class HabitDetailsPage extends StatefulWidget {
 class _HabitDetailsPageState extends State<HabitDetailsPage> {
   final HabitRepository repository = HabitRepository();
 
+  late Habit currentHabit;
+
   int currentStreak = 0;
   List<models.Badge> badges = [];
 
@@ -33,10 +35,18 @@ class _HabitDetailsPageState extends State<HabitDetailsPage> {
   void initState() {
     super.initState();
 
-    currentCycleCount = widget.habit.frequencyCounter;
-    cycleGoal = widget.habit.habitFrequency;
+    currentHabit = widget.habit;
+    currentCycleCount = currentHabit.frequencyCounter;
+    cycleGoal = currentHabit.habitFrequency;
     doneThisCycle = currentCycleCount >= cycleGoal;
-    nextResetMillis = calculateNextReset(widget.habit);
+
+    // use saved DB-backed value first
+    nextResetMillis = currentHabit.nextReset;
+
+    // fallback only if missing/invalid
+    if (nextResetMillis <= 0) {
+      nextResetMillis = calculateNextReset(currentHabit);
+    }
 
     loadHabitDetails();
     setupNextReset();
@@ -49,30 +59,66 @@ class _HabitDetailsPageState extends State<HabitDetailsPage> {
   }
 
   Future<void> loadHabitDetails() async {
-    final streak = await repository.getHabitStreak(widget.habit.id!);
-    final badgeList = await repository.getBadges(widget.habit.id!);
+    if (currentHabit.id == null) return;
+
+    final allHabits = await repository.getAllHabits();
+    final matchingHabits = allHabits.where((h) => h.id == currentHabit.id);
+
+    if (matchingHabits.isNotEmpty) {
+      currentHabit = matchingHabits.first;
+    }
+
+    final streak = await repository.getHabitStreak(currentHabit.id!);
+    final badgeList = await repository.getBadges(currentHabit.id!);
+    final cycleDone = await repository.isHabitDoneThisCycle(currentHabit);
 
     if (!mounted) return;
 
     setState(() {
       currentStreak = streak;
       badges = badgeList;
+      currentCycleCount = currentHabit.frequencyCounter;
+      cycleGoal = currentHabit.habitFrequency;
+      nextResetMillis = currentHabit.nextReset;
+      doneThisCycle = cycleDone || currentCycleCount >= cycleGoal;
     });
   }
 
   void setupNextReset() {
     countdownTimer?.cancel();
 
-    countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+    countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
       if (!mounted) return;
 
       final now = DateTime.now().millisecondsSinceEpoch;
 
       if (now >= nextResetMillis) {
+        final newReset = calculateNextReset(currentHabit);
+
+        final resetHabit = Habit(
+          id: currentHabit.id,
+          name: currentHabit.name,
+          description: currentHabit.description,
+          repeatType: currentHabit.repeatType,
+          dayOfWeek: currentHabit.dayOfWeek,
+          dayOfMonth: currentHabit.dayOfMonth,
+          month: currentHabit.month,
+          timeOfDay: currentHabit.timeOfDay,
+          createdAt: currentHabit.createdAt,
+          habitFrequency: currentHabit.habitFrequency,
+          frequencyCounter: 0,
+          nextReset: newReset,
+        );
+
+        await repository.updateHabit(resetHabit);
+        currentHabit = resetHabit;
+
+        if (!mounted) return;
+
         setState(() {
           currentCycleCount = 0;
           doneThisCycle = false;
-          nextResetMillis = calculateNextReset(widget.habit);
+          nextResetMillis = newReset;
         });
       } else {
         setState(() {});
@@ -81,20 +127,45 @@ class _HabitDetailsPageState extends State<HabitDetailsPage> {
   }
 
   Future<void> markDoneOnce() async {
-    final now = DateTime.now().toIso8601String();
+    if (currentHabit.id == null) return;
+    if (doneThisCycle) return;
 
-    await repository.markHabitDone(widget.habit.id!, now);
-    await repository.checkAndAwardBadges(widget.habit.id!);
+    final nowIso = DateTime.now().toIso8601String();
+
+    final newCount = currentCycleCount + 1;
+    final reachedGoal = newCount >= cycleGoal;
+
+    final updatedHabit = Habit(
+      id: currentHabit.id,
+      name: currentHabit.name,
+      description: currentHabit.description,
+      repeatType: currentHabit.repeatType,
+      dayOfWeek: currentHabit.dayOfWeek,
+      dayOfMonth: currentHabit.dayOfMonth,
+      month: currentHabit.month,
+      timeOfDay: currentHabit.timeOfDay,
+      createdAt: currentHabit.createdAt,
+      habitFrequency: currentHabit.habitFrequency,
+      frequencyCounter: newCount,
+      nextReset: currentHabit.nextReset,
+    );
+
+    await repository.markHabitDone(currentHabit.id!, nowIso);
+    await repository.updateHabit(updatedHabit);
+    await repository.checkAndAwardBadges(currentHabit.id!);
+
+    currentHabit = updatedHabit;
 
     if (!mounted) return;
 
     setState(() {
-      currentCycleCount = currentCycleCount + 1;
-      doneThisCycle = currentCycleCount >= cycleGoal;
+      currentCycleCount = newCount;
+      doneThisCycle = reachedGoal;
     });
 
     await loadHabitDetails();
 
+    if (!mounted) return;
     Navigator.pop(context, true);
   }
 
@@ -103,7 +174,7 @@ class _HabitDetailsPageState extends State<HabitDetailsPage> {
     final diff =
         DateTime.fromMillisecondsSinceEpoch(nextResetMillis).difference(now);
 
-    if (diff.isNegative) return "00:00:00";
+    if (diff.isNegative) return '00:00:00';
 
     final hours = diff.inHours;
     final minutes = diff.inMinutes % 60;
@@ -118,7 +189,7 @@ class _HabitDetailsPageState extends State<HabitDetailsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.habit.name),
+        title: Text(currentHabit.name),
         actions: [
           IconButton(
             icon: const Icon(Icons.edit),
@@ -126,11 +197,11 @@ class _HabitDetailsPageState extends State<HabitDetailsPage> {
               final updated = await Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => HabitSettingsPage(habit: widget.habit),
+                  builder: (_) => HabitSettingsPage(habit: currentHabit),
                 ),
               );
 
-              if (updated != null) {
+              if (updated == true) {
                 await loadHabitDetails();
               }
             },
@@ -142,7 +213,7 @@ class _HabitDetailsPageState extends State<HabitDetailsPage> {
         child: ListView(
           children: [
             Text(
-              widget.habit.name,
+              currentHabit.name,
               style: const TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
@@ -150,12 +221,12 @@ class _HabitDetailsPageState extends State<HabitDetailsPage> {
             ),
             const SizedBox(height: 12),
             Text(
-              widget.habit.description ?? 'No description',
+              currentHabit.description ?? 'No description',
               style: const TextStyle(fontSize: 18),
             ),
             const SizedBox(height: 16),
             Text(
-              'Repeats: ${widget.habit.repeatType.name}',
+              'Repeats: ${currentHabit.repeatType.name}',
               style: const TextStyle(fontSize: 18),
             ),
             const SizedBox(height: 16),

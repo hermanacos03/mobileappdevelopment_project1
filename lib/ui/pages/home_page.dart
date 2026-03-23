@@ -41,6 +41,8 @@ class HomePage extends StatelessWidget {
                   itemCount: habits.length,
                   itemBuilder: (context, index) {
                     final habit = habits[index];
+                    final bool isDoneThisCycle =
+                        habit['doneThisCycle'] == true;
 
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 12),
@@ -51,9 +53,8 @@ class HomePage extends StatelessWidget {
                               height: 60,
                               child: ElevatedButton(
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: habit['doneToday'] == true
-                                      ? Colors.green
-                                      : null,
+                                  backgroundColor:
+                                      isDoneThisCycle ? Colors.green : null,
                                 ),
                                 onPressed: () {
                                   onHabitPressed(habit);

@@ -3,14 +3,9 @@ import '../models/habit_occurrence.dart';
 import '../models/badge.dart';
 import '../database_helper.dart';
 import '../../core/constants/enums.dart';
-import '../../core/functions/next_Reset.dart';
 
 class HabitRepository {
   final dbHelper = DatabaseHelper.instance;
-
-  // =========================
-  // HABITS
-  // =========================
 
   Future<int> createHabit(Habit habit) async {
     return await dbHelper.insertHabit(habit.toMap());
@@ -29,10 +24,6 @@ class HabitRepository {
   Future<void> deleteHabit(int id) async {
     await dbHelper.deleteHabit(id);
   }
-
-  // =========================
-  // OCCURRENCES
-  // =========================
 
   Future<void> markHabitDone(int habitId, String date) async {
     final occurrence = HabitOccurrence(
@@ -60,6 +51,11 @@ class HabitRepository {
     return result.map((map) => HabitOccurrence.fromMap(map)).toList();
   }
 
+  Future<List<HabitOccurrence>> getAllOccurrences() async {
+    final result = await dbHelper.getAllOccurrences();
+    return result.map((map) => HabitOccurrence.fromMap(map)).toList();
+  }
+
   Future<bool> isHabitDoneToday(int habitId) async {
     final today = DateTime.now().toIso8601String().split('T')[0];
     final occurrences = await getOccurrences(habitId);
@@ -69,15 +65,14 @@ class HabitRepository {
     );
   }
 
-  // =========================
-  // CURRENT CYCLE LOGIC
-  // =========================
-
   Future<bool> isHabitDoneThisCycle(Habit habit) async {
     if (habit.id == null) return false;
 
     final occurrences = await getOccurrences(habit.id!);
-    final nextResetMillis = calculateNextReset(habit);
+
+    final nextResetMillis = habit.nextReset;
+    if (nextResetMillis <= 0) return false;
+
     final nextReset = DateTime.fromMillisecondsSinceEpoch(nextResetMillis);
     final lastReset = getLastResetTime(habit, nextReset);
 
@@ -87,11 +82,13 @@ class HabitRepository {
       final occurrenceTime = DateTime.tryParse(occurrence.date);
       if (occurrenceTime == null) return false;
 
-      final isAfterLastReset =
-          occurrenceTime.isAfter(lastReset) || occurrenceTime.isAtSameMomentAs(lastReset);
+      final isAfterOrAtLastReset =
+          occurrenceTime.isAfter(lastReset) ||
+          occurrenceTime.isAtSameMomentAs(lastReset);
+
       final isBeforeNextReset = occurrenceTime.isBefore(nextReset);
 
-      return isAfterLastReset && isBeforeNextReset;
+      return isAfterOrAtLastReset && isBeforeNextReset;
     });
   }
 
@@ -123,10 +120,6 @@ class HabitRepository {
     }
   }
 
-  // =========================
-  // STREAK LOGIC
-  // =========================
-
   Future<int> getHabitStreak(int habitId) async {
     final logs = await getOccurrences(habitId);
 
@@ -134,7 +127,7 @@ class HabitRepository {
 
     int streak = 0;
 
-    for (var log in logs) {
+    for (final log in logs) {
       if (log.status == HabitStatus.done) {
         streak++;
       } else {
@@ -145,20 +138,16 @@ class HabitRepository {
     return streak;
   }
 
-  // =========================
-  // BADGES
-  // =========================
-
   Future<void> checkAndAwardBadges(int habitId) async {
     final streak = await getHabitStreak(habitId);
 
-    List<int> milestones = [5, 10, 20];
+    const List<int> milestones = [5, 10, 20];
 
-    for (int milestone in milestones) {
+    for (final milestone in milestones) {
       if (streak >= milestone) {
         final badges = await dbHelper.getBadges(habitId);
 
-        bool alreadyEarned = badges.any(
+        final alreadyEarned = badges.any(
           (b) => b['milestone'] == milestone,
         );
 
@@ -179,10 +168,6 @@ class HabitRepository {
     final result = await dbHelper.getBadges(habitId);
     return result.map((map) => Badge.fromMap(map)).toList();
   }
-
-  // =========================
-  // TODAY VIEW (Notification Page)
-  // =========================
 
   Future<List<Map<String, dynamic>>> getTodayHabits() async {
     final today = DateTime.now().toIso8601String().split('T')[0];
