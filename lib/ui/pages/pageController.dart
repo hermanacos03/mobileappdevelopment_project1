@@ -7,6 +7,7 @@ import '../../database_helper.dart';
 import '../../data/models/habit.dart';
 import 'home_page.dart';
 import 'habit_settings_page.dart';
+import 'habit_details_page.dart';
 import 'page1.dart';
 import 'page2.dart';
 
@@ -155,7 +156,7 @@ class _PageControllerappState extends State<PageControllerapp> {
             final result = await Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => HabitSettingsPage(habit: habit),
+                builder: (context) => HabitDetailsPage(habit: habit),
               ),
             );
 
