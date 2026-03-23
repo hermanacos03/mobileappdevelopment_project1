@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 
 class HomePage extends StatelessWidget {
@@ -16,10 +17,41 @@ class HomePage extends StatelessWidget {
     required this.onDeleteHabit,
   });
 
+  String formatDateTime(DateTime now) {
+    final date =
+        "${now.month}/${now.day}/${now.year}";
+    final time =
+        "${now.hour.toString().padLeft(2, '0')}:"
+        "${now.minute.toString().padLeft(2, '0')}:"
+        "${now.second.toString().padLeft(2, '0')}";
+
+    return "$date\n$time";
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
+        // 🔥 LIVE DATE + TIME
+        StreamBuilder(
+          stream: Stream.periodic(const Duration(seconds: 1)),
+          builder: (context, snapshot) {
+            final now = DateTime.now();
+
+            return Text(
+              formatDateTime(now),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+              ),
+            );
+          },
+        ),
+
+        const SizedBox(height: 15),
+
+        // ➕ ADD BUTTON
         SizedBox(
           width: double.infinity,
           height: 60,
@@ -28,7 +60,10 @@ class HomePage extends StatelessWidget {
             child: const Icon(Icons.add, size: 35),
           ),
         ),
+
         const SizedBox(height: 20),
+
+        // 📋 HABITS LIST
         Expanded(
           child: habits.isEmpty
               ? const Center(
