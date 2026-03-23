@@ -82,12 +82,7 @@ class DatabaseHelper {
 
   Future<int> insertHabit(Map<String, dynamic> habit) async {
     final db = await instance.database;
-    try {
-      return await db.insert('habits', habit);
-    } catch (e) {
-      print('Error inserting habit: $e');
-      rethrow;
-    }
+    return await db.insert('habits', habit);
   }
 
   Future<List<Map<String, dynamic>>> getHabits() async {
@@ -116,16 +111,11 @@ class DatabaseHelper {
 
   Future<int> insertOccurrence(Map<String, dynamic> occurrence) async {
     final db = await instance.database;
-    try {
-      return await db.insert(
-        'habit_occurrences',
-        occurrence,
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
-    } catch (e) {
-      print('Error inserting occurrence: $e');
-      rethrow;
-    }
+    return await db.insert(
+      'habit_occurrences',
+      occurrence,
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
   }
 
   Future<List<Map<String, dynamic>>> getOccurrencesByHabit(int habitId) async {
@@ -180,6 +170,39 @@ class DatabaseHelper {
       ON h.id = o.habit_id AND o.date = ?
       ORDER BY h.time_of_day ASC
     ''', [today]);
+  }
+
+  // 🔥 ONLY ADDITION
+  Future<void> seedTestStreakDirect({
+    required int habitId,
+    required int streakDays,
+  }) async {
+    final db = await instance.database;
+    final now = DateTime.now();
+
+    await db.delete(
+      'habit_occurrences',
+      where: 'habit_id = ?',
+      whereArgs: [habitId],
+    );
+
+    for (int i = 0; i < streakDays; i++) {
+      final date = now.subtract(Duration(days: i));
+
+      final formattedDate =
+          '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+
+      await db.insert(
+        'habit_occurrences',
+        {
+          'habit_id': habitId,
+          'date': formattedDate,
+          'status': 'done',
+          'completed_at': date.toIso8601String(),
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    }
   }
 
   Future close() async {

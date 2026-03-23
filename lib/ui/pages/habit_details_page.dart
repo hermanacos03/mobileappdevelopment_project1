@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import '../../data/models/habit.dart';
 import '../../data/models/badge.dart' as models;
 import '../../data/repositories/habit_repository.dart';
+import '../../data/database_helper.dart';
 import '../../core/functions/next_Reset.dart';
+import '../../core/utils/ai_helper.dart';
 import 'habit_settings_page.dart';
 import '../widgets/streak_badge.dart';
 
@@ -40,10 +42,8 @@ class _HabitDetailsPageState extends State<HabitDetailsPage> {
     cycleGoal = currentHabit.habitFrequency;
     doneThisCycle = currentCycleCount >= cycleGoal;
 
-    // use saved DB-backed value first
     nextResetMillis = currentHabit.nextReset;
 
-    // fallback only if missing/invalid
     if (nextResetMillis <= 0) {
       nextResetMillis = calculateNextReset(currentHabit);
     }
@@ -120,6 +120,8 @@ class _HabitDetailsPageState extends State<HabitDetailsPage> {
           doneThisCycle = false;
           nextResetMillis = newReset;
         });
+
+        await loadHabitDetails();
       } else {
         setState(() {});
       }
@@ -166,7 +168,28 @@ class _HabitDetailsPageState extends State<HabitDetailsPage> {
     await loadHabitDetails();
 
     if (!mounted) return;
-    Navigator.pop(context, true);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          doneThisCycle
+              ? 'Habit completed for this cycle.'
+              : 'Progress saved for today.',
+        ),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
+
+  Future<void> seedTestStreak(int days) async {
+    if (currentHabit.id == null) return;
+
+    await DatabaseHelper.instance.seedTestStreakDirect(
+      habitId: currentHabit.id!,
+      streakDays: days,
+    );
+
+    await loadHabitDetails();
   }
 
   String get countdown {
@@ -185,11 +208,99 @@ class _HabitDetailsPageState extends State<HabitDetailsPage> {
         '${seconds.toString().padLeft(2, '0')}';
   }
 
+  Widget buildAiBox() {
+    final mainMessage = AiHelper.generateHabitMessage(
+      habit: currentHabit,
+      currentStreak: currentStreak,
+      currentCycleCount: currentCycleCount,
+      cycleGoal: cycleGoal,
+      doneThisCycle: doneThisCycle,
+    );
+
+    final microGoal = AiHelper.generateMicroGoal(
+      habit: currentHabit,
+      currentStreak: currentStreak,
+      currentCycleCount: currentCycleCount,
+      cycleGoal: cycleGoal,
+      doneThisCycle: doneThisCycle,
+    );
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 8, bottom: 20),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade900,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.green, width: 1.4),
+      ),
+      child: Row(
+        children: [
+          const CircleAvatar(
+            backgroundColor: Colors.green,
+            child: Icon(Icons.smart_toy, color: Colors.black),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Habit Buddy',
+                  style: TextStyle(
+                    color: Colors.green,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  mainMessage,
+                  style: const TextStyle(color: Colors.white),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  microGoal,
+                  style: const TextStyle(color: Colors.white70),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget buildCompletionMessage() {
+    if (!doneThisCycle) return const SizedBox.shrink();
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.green.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.green),
+      ),
+      child: const Text(
+        'Habit completed for this cycle. Streak reached for today.',
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: Colors.green,
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.black,
       appBar: AppBar(
         title: Text(currentHabit.name),
+        backgroundColor: Colors.black,
         actions: [
           IconButton(
             icon: const Icon(Icons.edit),
@@ -208,78 +319,81 @@ class _HabitDetailsPageState extends State<HabitDetailsPage> {
           ),
         ],
       ),
-      body: Padding(
+      body: ListView(
         padding: const EdgeInsets.all(16),
-        child: ListView(
-          children: [
-            Text(
-              currentHabit.name,
-              style: const TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              currentHabit.description ?? 'No description',
-              style: const TextStyle(fontSize: 18),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Repeats: ${currentHabit.repeatType.name}',
-              style: const TextStyle(fontSize: 18),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Current Streak: $currentStreak',
-              style: const TextStyle(fontSize: 18),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Progress This Cycle: $currentCycleCount / $cycleGoal',
-              style: const TextStyle(fontSize: 18),
-            ),
-            const SizedBox(height: 16),
+        children: [
+          Text(
+            currentHabit.description ?? '',
+            style: const TextStyle(color: Colors.white),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Streak: $currentStreak',
+            style: const TextStyle(color: Colors.white),
+          ),
+          Text(
+            'Cycle: $currentCycleCount / $cycleGoal',
+            style: const TextStyle(color: Colors.white),
+          ),
+          Text(
+            'Reset In: $countdown',
+            style: const TextStyle(color: Colors.white70),
+          ),
+          const SizedBox(height: 20),
+          buildAiBox(),
+          buildCompletionMessage(),
+          if (badges.isNotEmpty) ...[
             const Text(
               'Badges',
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
+                color: Colors.white,
               ),
             ),
             const SizedBox(height: 12),
-            badges.isEmpty
-                ? const Text('No badges earned yet')
-                : Wrap(
-                    spacing: 16,
-                    runSpacing: 16,
-                    children:
-                        badges.map((b) => StreakBadge(badge: b)).toList(),
-                  ),
-            const SizedBox(height: 24),
-            Text(
-              'Next Reset: $countdown',
-              style: const TextStyle(
-                fontSize: 18,
-                color: Colors.grey,
-              ),
+            Wrap(
+              spacing: 16,
+              runSpacing: 16,
+              children: badges.map((b) => StreakBadge(badge: b)).toList(),
             ),
             const SizedBox(height: 20),
-            doneThisCycle
-                ? const Text(
-                    'Habit completed for this cycle',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.green,
-                    ),
-                  )
-                : ElevatedButton(
-                    onPressed: markDoneOnce,
-                    child: const Text('Done Once'),
-                  ),
           ],
-        ),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => seedTestStreak(7),
+                  child: const Text('7d'),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => seedTestStreak(14),
+                  child: const Text('14d'),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => seedTestStreak(30),
+                  child: const Text('30d'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          doneThisCycle
+              ? ElevatedButton(
+                  onPressed: null,
+                  child: const Text('Done Once'),
+                )
+              : ElevatedButton(
+                  onPressed: markDoneOnce,
+                  child: const Text('Done Once'),
+                ),
+        ],
       ),
     );
   }
