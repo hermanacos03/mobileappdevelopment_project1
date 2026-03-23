@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import '../../core/functions/dateTime.dart';
 
 class HomePage extends StatelessWidget {
   final List<Map<String, dynamic>> habits;
   final VoidCallback onAddHabit;
-  final Future<void> Function(Map<String, dynamic>) onHabitPressed;
+  final Function(Map<String, dynamic>) onHabitPressed;
+  final Function(Map<String, dynamic>) onEditHabit;
   final Function(int) onDeleteHabit;
 
   const HomePage({
@@ -12,82 +12,88 @@ class HomePage extends StatelessWidget {
     required this.habits,
     required this.onAddHabit,
     required this.onHabitPressed,
+    required this.onEditHabit,
     required this.onDeleteHabit,
   });
 
   @override
   Widget build(BuildContext context) {
-    final dateTime = getFormattedDateTime();
-
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        children: [
-          Text(
-            '${dateTime['date']}\n${dateTime['time']}',
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-            ),
+    return Column(
+      children: [
+        SizedBox(
+          width: double.infinity,
+          height: 60,
+          child: ElevatedButton(
+            onPressed: onAddHabit,
+            child: const Icon(Icons.add, size: 35),
           ),
-          const SizedBox(height: 12),
+        ),
+        const SizedBox(height: 20),
+        Expanded(
+          child: habits.isEmpty
+              ? const Center(
+                  child: Text(
+                    'No habits added yet',
+                    style: TextStyle(fontSize: 18),
+                  ),
+                )
+              : ListView.builder(
+                  itemCount: habits.length,
+                  itemBuilder: (context, index) {
+                    final habit = habits[index];
 
-          SizedBox(
-            width: double.infinity,
-            height: 60,
-            child: ElevatedButton.icon(
-              onPressed: onAddHabit,
-              icon: const Icon(Icons.add, size: 28),
-              label: const Text(
-                "Add Habit",
-                style: TextStyle(fontSize: 18),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          Expanded(
-            child: habits.isEmpty
-                ? const Center(
-                    child: Text(
-                      'No habits added yet',
-                      style: TextStyle(fontSize: 18),
-                    ),
-                  )
-                : ListView.builder(
-                    itemCount: habits.length,
-                    itemBuilder: (context, index) {
-                      final habit = habits[index];
-                      final name = habit['name'] ?? 'Unnamed Habit';
-
-                      return Card(
-                        elevation: 3,
-                        margin: const EdgeInsets.only(bottom: 12),
-                        child: ListTile(
-                          title: Text(
-                            name,
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w500,
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: SizedBox(
+                              height: 60,
+                              child: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: habit['doneToday'] == true
+                                      ? Colors.green
+                                      : null,
+                                ),
+                                onPressed: () {
+                                  onHabitPressed(habit);
+                                },
+                                child: Text(
+                                  habit['name'] ?? 'Unnamed Habit',
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
                             ),
                           ),
-                          onTap: () => onHabitPressed(habit),
-                          trailing: IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.red),
-                            onPressed: () {
-                              if (habit['id'] != null) {
-                                onDeleteHabit(habit['id']);
-                              }
-                            },
+                          const SizedBox(width: 10),
+                          SizedBox(
+                            width: 60,
+                            height: 60,
+                            child: ElevatedButton(
+                              onPressed: () {
+                                onEditHabit(habit);
+                              },
+                              child: const Icon(Icons.edit),
+                            ),
                           ),
-                        ),
-                      );
-                    },
-                  ),
-          ),
-        ],
-      ),
+                          const SizedBox(width: 10),
+                          SizedBox(
+                            width: 60,
+                            height: 60,
+                            child: ElevatedButton(
+                              onPressed: () {
+                                onDeleteHabit(habit['id']);
+                              },
+                              child: const Icon(Icons.delete),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
     );
   }
 }

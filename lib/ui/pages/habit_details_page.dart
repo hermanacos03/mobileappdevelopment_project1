@@ -21,14 +21,23 @@ class _HabitDetailsPageState extends State<HabitDetailsPage> {
 
   int currentStreak = 0;
   List<models.Badge> badges = [];
-  bool doneToday = false;
 
+  late int currentCycleCount;
+  late int cycleGoal;
+  late bool doneThisCycle;
   late int nextResetMillis;
+
   Timer? countdownTimer;
 
   @override
   void initState() {
     super.initState();
+
+    currentCycleCount = widget.habit.frequencyCounter;
+    cycleGoal = widget.habit.habitFrequency;
+    doneThisCycle = currentCycleCount >= cycleGoal;
+    nextResetMillis = calculateNextReset(widget.habit);
+
     loadHabitDetails();
     setupNextReset();
   }
@@ -42,30 +51,32 @@ class _HabitDetailsPageState extends State<HabitDetailsPage> {
   Future<void> loadHabitDetails() async {
     final streak = await repository.getHabitStreak(widget.habit.id!);
     final badgeList = await repository.getBadges(widget.habit.id!);
-    final completedToday = await repository.isHabitDoneToday(widget.habit.id!);
+
+    if (!mounted) return;
 
     setState(() {
       currentStreak = streak;
       badges = badgeList;
-      doneToday = completedToday;
-      nextResetMillis = calculateNextReset(widget.habit);
     });
   }
 
   void setupNextReset() {
     countdownTimer?.cancel();
+
     countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
 
-      final now = DateTime.now();
-      final nextResetDate = DateTime.fromMillisecondsSinceEpoch(nextResetMillis);
+      final now = DateTime.now().millisecondsSinceEpoch;
 
-      if (now.isAfter(nextResetDate)) {
-        nextResetMillis = calculateNextReset(widget.habit);
-        loadHabitDetails();
+      if (now >= nextResetMillis) {
+        setState(() {
+          currentCycleCount = 0;
+          doneThisCycle = false;
+          nextResetMillis = calculateNextReset(widget.habit);
+        });
+      } else {
+        setState(() {});
       }
-
-      setState(() {});
     });
   }
 
@@ -74,7 +85,17 @@ class _HabitDetailsPageState extends State<HabitDetailsPage> {
 
     await repository.markHabitDone(widget.habit.id!, now);
     await repository.checkAndAwardBadges(widget.habit.id!);
+
+    if (!mounted) return;
+
+    setState(() {
+      currentCycleCount = currentCycleCount + 1;
+      doneThisCycle = currentCycleCount >= cycleGoal;
+    });
+
     await loadHabitDetails();
+
+    Navigator.pop(context, true);
   }
 
   String get countdown {
@@ -108,8 +129,9 @@ class _HabitDetailsPageState extends State<HabitDetailsPage> {
                   builder: (_) => HabitSettingsPage(habit: widget.habit),
                 ),
               );
+
               if (updated != null) {
-                loadHabitDetails();
+                await loadHabitDetails();
               }
             },
           ),
@@ -142,6 +164,11 @@ class _HabitDetailsPageState extends State<HabitDetailsPage> {
               style: const TextStyle(fontSize: 18),
             ),
             const SizedBox(height: 16),
+            Text(
+              'Progress This Cycle: $currentCycleCount / $cycleGoal',
+              style: const TextStyle(fontSize: 18),
+            ),
+            const SizedBox(height: 16),
             const Text(
               'Badges',
               style: TextStyle(
@@ -155,7 +182,8 @@ class _HabitDetailsPageState extends State<HabitDetailsPage> {
                 : Wrap(
                     spacing: 16,
                     runSpacing: 16,
-                    children: badges.map((b) => StreakBadge(badge: b)).toList(),
+                    children:
+                        badges.map((b) => StreakBadge(badge: b)).toList(),
                   ),
             const SizedBox(height: 24),
             Text(
@@ -166,9 +194,9 @@ class _HabitDetailsPageState extends State<HabitDetailsPage> {
               ),
             ),
             const SizedBox(height: 20),
-            doneToday
+            doneThisCycle
                 ? const Text(
-                    'Streak done for the day',
+                    'Habit completed for this cycle',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,

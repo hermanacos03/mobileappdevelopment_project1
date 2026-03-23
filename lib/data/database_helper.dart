@@ -2,34 +2,30 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 
 class DatabaseHelper {
-  // Singleton instance
   static final DatabaseHelper instance = DatabaseHelper._init();
   static Database? _database;
 
   DatabaseHelper._init();
 
-  // Get database
   Future<Database> get database async {
     if (_database != null) return _database!;
     _database = await _initDB('habit_mastery.db');
     return _database!;
   }
 
-  // Initialize DB
   Future<Database> _initDB(String filePath) async {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, filePath);
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _createDB,
+      onUpgrade: _upgradeDB,
     );
   }
 
-  // Create Tables
-  Future _createDB(Database db, int version) async {
-    // HABITS TABLE
+  Future<void> _createDB(Database db, int version) async {
     await db.execute('''
       CREATE TABLE habits (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -40,11 +36,13 @@ class DatabaseHelper {
         day_of_month INTEGER,
         month INTEGER,
         time_of_day TEXT NOT NULL,
-        created_at TEXT NOT NULL
+        created_at TEXT NOT NULL,
+        habit_frequency INTEGER NOT NULL DEFAULT 1,
+        frequency_counter INTEGER NOT NULL DEFAULT 0,
+        next_reset INTEGER NOT NULL DEFAULT 0
       )
     ''');
 
-    // HABIT OCCURRENCES TABLE
     await db.execute('''
       CREATE TABLE habit_occurrences (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -57,7 +55,6 @@ class DatabaseHelper {
       )
     ''');
 
-    // BADGES TABLE
     await db.execute('''
       CREATE TABLE badges (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -69,9 +66,19 @@ class DatabaseHelper {
     ''');
   }
 
-  // =========================
-  // HABIT METHODS
-  // =========================
+  Future<void> _upgradeDB(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute(
+        'ALTER TABLE habits ADD COLUMN habit_frequency INTEGER NOT NULL DEFAULT 1',
+      );
+      await db.execute(
+        'ALTER TABLE habits ADD COLUMN frequency_counter INTEGER NOT NULL DEFAULT 0',
+      );
+      await db.execute(
+        'ALTER TABLE habits ADD COLUMN next_reset INTEGER NOT NULL DEFAULT 0',
+      );
+    }
+  }
 
   Future<int> insertHabit(Map<String, dynamic> habit) async {
     final db = await instance.database;
@@ -107,17 +114,13 @@ class DatabaseHelper {
     );
   }
 
-  // =========================
-  // OCCURRENCE METHODS
-  // =========================
-
   Future<int> insertOccurrence(Map<String, dynamic> occurrence) async {
     final db = await instance.database;
     try {
       return await db.insert(
         'habit_occurrences',
         occurrence,
-        conflictAlgorithm: ConflictAlgorithm.replace, // avoids duplicate crash
+        conflictAlgorithm: ConflictAlgorithm.replace,
       );
     } catch (e) {
       print('Error inserting occurrence: $e');
@@ -145,10 +148,6 @@ class DatabaseHelper {
     );
   }
 
-  // =========================
-  // BADGE METHODS
-  // =========================
-
   Future<int> insertBadge(Map<String, dynamic> badge) async {
     final db = await instance.database;
     return await db.insert('badges', badge);
@@ -163,11 +162,6 @@ class DatabaseHelper {
     );
   }
 
-  // =========================
-  // HELPER METHODS
-  // =========================
-
-  // Get today's habits with status
   Future<List<Map<String, dynamic>>> getTodayOccurrences(String today) async {
     final db = await instance.database;
 
@@ -180,7 +174,6 @@ class DatabaseHelper {
     ''', [today]);
   }
 
-  // Close DB
   Future close() async {
     final db = await instance.database;
     db.close();

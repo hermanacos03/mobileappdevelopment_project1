@@ -3,6 +3,7 @@ import '../models/habit_occurrence.dart';
 import '../models/badge.dart';
 import '../database_helper.dart';
 import '../../core/constants/enums.dart';
+import '../../core/functions/next_Reset.dart';
 
 class HabitRepository {
   final dbHelper = DatabaseHelper.instance;
@@ -58,15 +59,70 @@ class HabitRepository {
     final result = await dbHelper.getOccurrencesByHabit(habitId);
     return result.map((map) => HabitOccurrence.fromMap(map)).toList();
   }
+
   Future<bool> isHabitDoneToday(int habitId) async {
     final today = DateTime.now().toIso8601String().split('T')[0];
-
     final occurrences = await getOccurrences(habitId);
 
     return occurrences.any(
       (o) => o.date.startsWith(today) && o.status == HabitStatus.done,
     );
   }
+
+  // =========================
+  // CURRENT CYCLE LOGIC
+  // =========================
+
+  Future<bool> isHabitDoneThisCycle(Habit habit) async {
+    if (habit.id == null) return false;
+
+    final occurrences = await getOccurrences(habit.id!);
+    final nextResetMillis = calculateNextReset(habit);
+    final nextReset = DateTime.fromMillisecondsSinceEpoch(nextResetMillis);
+    final lastReset = getLastResetTime(habit, nextReset);
+
+    return occurrences.any((occurrence) {
+      if (occurrence.status != HabitStatus.done) return false;
+
+      final occurrenceTime = DateTime.tryParse(occurrence.date);
+      if (occurrenceTime == null) return false;
+
+      final isAfterLastReset =
+          occurrenceTime.isAfter(lastReset) || occurrenceTime.isAtSameMomentAs(lastReset);
+      final isBeforeNextReset = occurrenceTime.isBefore(nextReset);
+
+      return isAfterLastReset && isBeforeNextReset;
+    });
+  }
+
+  DateTime getLastResetTime(Habit habit, DateTime nextReset) {
+    switch (habit.repeatType) {
+      case RepeatType.daily:
+        return nextReset.subtract(const Duration(days: 1));
+
+      case RepeatType.weekly:
+        return nextReset.subtract(const Duration(days: 7));
+
+      case RepeatType.monthly:
+        return DateTime(
+          nextReset.year,
+          nextReset.month - 1,
+          nextReset.day,
+          nextReset.hour,
+          nextReset.minute,
+        );
+
+      case RepeatType.yearly:
+        return DateTime(
+          nextReset.year - 1,
+          nextReset.month,
+          nextReset.day,
+          nextReset.hour,
+          nextReset.minute,
+        );
+    }
+  }
+
   // =========================
   // STREAK LOGIC
   // =========================
