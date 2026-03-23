@@ -56,7 +56,7 @@ class _HeatmapScreenState extends State<HeatmapScreen> {
               datasets: heatmapData,
               colorMode: ColorMode.color,
               defaultColor: Colors.grey[200]!,
-              textColor: Colors.black,
+              textColor: Colors.white,
               showColorTip: false,
               colorsets: {
                 1: Colors.green[200]!,
