@@ -1,4 +1,6 @@
 import '../../data/models/habit_occurrence.dart';
+import '../../data/models/habit.dart';
+import '../functions/next_Reset.dart';
 
 Map<DateTime, int> buildHeatmapData(List<HabitOccurrence> occurrences) {
   final Map<DateTime, int> data = {};
@@ -21,4 +23,26 @@ Map<DateTime, int> buildHeatmapData(List<HabitOccurrence> occurrences) {
   }
 
   return data;
+}
+
+Habit? findNextHabitFromReset(List<Habit> habits) {
+  Habit? closestHabit;
+  int? closestTime;
+
+  final now = DateTime.now().millisecondsSinceEpoch;
+
+  for (var habit in habits) {
+    final nextReset = calculateNextReset(habit);
+    if (closestTime == null || nextReset < closestTime) {
+      closestTime = nextReset;
+      closestHabit = habit;
+    }
+  }
+
+  return closestHabit;
+}
+
+// Get the DateTime of a habit's next reset
+DateTime getNextHabitDateTime(Habit habit) {
+  return DateTime.fromMillisecondsSinceEpoch(calculateNextReset(habit));
 }
