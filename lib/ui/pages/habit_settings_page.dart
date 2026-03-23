@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import '../data/repositories/habit_repository.dart';
-import '../data/models/habit.dart';
-import '../core/constants/enums.dart';
+import '../../data/repositories/habit_repository.dart';
+import '../../data/models/habit.dart';
 import '../../core/constants/enums.dart';
-import '../core/utils/weekDays.dart';
+import '../../../core/constants/enums.dart';
+import '../../core/utils/weekDays.dart';
 
 class HabitSettingsPage extends StatefulWidget {
   final Habit? habit;
