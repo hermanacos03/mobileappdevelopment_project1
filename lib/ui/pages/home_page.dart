@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../functions/dateTime.dart';
+import '../../core/functions/dateTime.dart';
 
 class HomePage extends StatelessWidget {
   final List<Map<String, dynamic>> habits;

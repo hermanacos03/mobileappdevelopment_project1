@@ -1,7 +1,7 @@
 import '../models/habit.dart';
 import '../models/habit_occurrence.dart';
 import '../models/badge.dart';
-import '../../database_helper.dart';
+import '../database_helper.dart';
 import '../../core/constants/enums.dart';
 
 class HabitRepository {

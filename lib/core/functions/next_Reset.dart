@@ -1,5 +1,5 @@
-import '../data/models/habit.dart';
-import '../core/constants/enums.dart';
+import '../../data/models/habit.dart';
+import '../constants/enums.dart';
 
 int calculateNextReset(Habit habit) {
   final now = DateTime.now();

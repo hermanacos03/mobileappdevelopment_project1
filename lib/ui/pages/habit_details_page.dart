@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../data/models/habit.dart';
 import '../../data/models/badge.dart' as models;
 import '../../data/repositories/habit_repository.dart';
-import '../../functions/next_Reset.dart';
+import '../../core/functions/next_Reset.dart';
 import 'habit_settings_page.dart';
 import '../widgets/streak_badge.dart';
 
