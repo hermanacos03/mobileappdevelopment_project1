@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../data/repositories/habit_repository.dart';
 import '../../data/models/habit.dart';
 import '../../core/constants/enums.dart';
-import '../../../core/constants/enums.dart';
 import '../../core/utils/weekDays.dart';
 
 class HabitSettingsPage extends StatefulWidget {
@@ -48,19 +47,52 @@ class _HabitSettingsPageState extends State<HabitSettingsPage> {
     selectedMonth = habit?.month;
   }
 
+  // =========================
+  // VALIDATION + SAVE
+  // =========================
   Future<void> saveHabit() async {
     if (!_formKey.currentState!.validate()) return;
+
+    // Extra validation for repeat rules
+    if (selectedRepeat == RepeatType.weekly && selectedDayOfWeek == null) {
+      showError("Please select a weekday");
+      return;
+    }
+
+    if (selectedRepeat == RepeatType.monthly) {
+      if (selectedDayOfMonth == null ||
+          selectedDayOfMonth! < 1 ||
+          selectedDayOfMonth! > 31) {
+        showError("Enter a valid day (1–31)");
+        return;
+      }
+    }
+
+    if (selectedRepeat == RepeatType.yearly) {
+      if (selectedMonth == null ||
+          selectedMonth! < 1 ||
+          selectedMonth! > 12) {
+        showError("Enter a valid month (1–12)");
+        return;
+      }
+
+      if (selectedDayOfMonth == null ||
+          selectedDayOfMonth! < 1 ||
+          selectedDayOfMonth! > 31) {
+        showError("Enter a valid day (1–31)");
+        return;
+      }
+    }
 
     final habit = Habit(
       id: widget.habit?.id,
       name: nameController.text.trim(),
       description: descriptionController.text.trim(),
       repeatType: selectedRepeat,
-      dayOfWeek: selectedRepeat == RepeatType.weekly
-          ? selectedDayOfWeek
-          : null,
-      dayOfMonth: selectedRepeat == RepeatType.monthly ||
-              selectedRepeat == RepeatType.yearly
+      dayOfWeek:
+          selectedRepeat == RepeatType.weekly ? selectedDayOfWeek : null,
+      dayOfMonth: (selectedRepeat == RepeatType.monthly ||
+              selectedRepeat == RepeatType.yearly)
           ? selectedDayOfMonth
           : null,
       month: selectedRepeat == RepeatType.yearly ? selectedMonth : null,
@@ -78,6 +110,15 @@ class _HabitSettingsPageState extends State<HabitSettingsPage> {
     Navigator.pop(context, true);
   }
 
+  void showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  // =========================
+  // REPEAT OPTIONS UI
+  // =========================
   Widget buildRepeatOptions() {
     switch (selectedRepeat) {
       case RepeatType.weekly:
@@ -100,7 +141,9 @@ class _HabitSettingsPageState extends State<HabitSettingsPage> {
 
       case RepeatType.monthly:
         return TextFormField(
-          decoration: const InputDecoration(labelText: "Day of month (1-31)"),
+          initialValue: selectedDayOfMonth?.toString(),
+          decoration:
+              const InputDecoration(labelText: "Day of month (1-31)"),
           keyboardType: TextInputType.number,
           onChanged: (value) {
             selectedDayOfMonth = int.tryParse(value);
@@ -111,6 +154,7 @@ class _HabitSettingsPageState extends State<HabitSettingsPage> {
         return Column(
           children: [
             TextFormField(
+              initialValue: selectedMonth?.toString(),
               decoration:
                   const InputDecoration(labelText: "Month (1-12)"),
               keyboardType: TextInputType.number,
@@ -120,6 +164,7 @@ class _HabitSettingsPageState extends State<HabitSettingsPage> {
             ),
             const SizedBox(height: 10),
             TextFormField(
+              initialValue: selectedDayOfMonth?.toString(),
               decoration:
                   const InputDecoration(labelText: "Day (1-31)"),
               keyboardType: TextInputType.number,
@@ -135,6 +180,9 @@ class _HabitSettingsPageState extends State<HabitSettingsPage> {
     }
   }
 
+  // =========================
+  // DISPOSE
+  // =========================
   @override
   void dispose() {
     nameController.dispose();
@@ -143,6 +191,9 @@ class _HabitSettingsPageState extends State<HabitSettingsPage> {
     super.dispose();
   }
 
+  // =========================
+  // UI
+  // =========================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -155,6 +206,7 @@ class _HabitSettingsPageState extends State<HabitSettingsPage> {
           key: _formKey,
           child: ListView(
             children: [
+              // NAME
               TextFormField(
                 controller: nameController,
                 decoration: const InputDecoration(
@@ -162,13 +214,14 @@ class _HabitSettingsPageState extends State<HabitSettingsPage> {
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) =>
-                    value == null || value.isEmpty
-                        ? "Enter name"
+                    value == null || value.trim().isEmpty
+                        ? "Enter a habit name"
                         : null,
               ),
 
               const SizedBox(height: 20),
 
+              // DESCRIPTION
               TextFormField(
                 controller: descriptionController,
                 decoration: const InputDecoration(
@@ -179,6 +232,7 @@ class _HabitSettingsPageState extends State<HabitSettingsPage> {
 
               const SizedBox(height: 20),
 
+              // REPEAT TYPE
               DropdownButtonFormField<RepeatType>(
                 value: selectedRepeat,
                 decoration: const InputDecoration(
@@ -200,10 +254,12 @@ class _HabitSettingsPageState extends State<HabitSettingsPage> {
 
               const SizedBox(height: 20),
 
+              // REPEAT OPTIONS
               buildRepeatOptions(),
 
               const SizedBox(height: 20),
 
+              // TIME
               TextFormField(
                 controller: timeController,
                 decoration: const InputDecoration(
@@ -211,14 +267,43 @@ class _HabitSettingsPageState extends State<HabitSettingsPage> {
                   border: OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.number,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return "Enter time";
+                  }
+
+                  if (value.length != 4) {
+                    return "Enter 4 digits (HHMM)";
+                  }
+
+                  final hour =
+                      int.tryParse(value.substring(0, 2));
+                  final minute =
+                      int.tryParse(value.substring(2, 4));
+
+                  if (hour == null || minute == null) {
+                    return "Invalid number";
+                  }
+
+                  if (hour < 0 || hour > 23) {
+                    return "Hour must be 00–23";
+                  }
+
+                  if (minute < 0 || minute > 59) {
+                    return "Minute must be 00–59";
+                  }
+
+                  return null;
+                },
               ),
 
               const SizedBox(height: 30),
 
+              // SAVE BUTTON
               ElevatedButton(
                 onPressed: saveHabit,
                 child: Text(isEditMode ? "Update" : "Create"),
-              )
+              ),
             ],
           ),
         ),
