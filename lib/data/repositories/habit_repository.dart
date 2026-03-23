@@ -59,11 +59,18 @@ class HabitRepository {
     return result.map((map) => HabitOccurrence.fromMap(map)).toList();
   }
 
+  Future<bool> isHabitDoneToday(int habitId) async {
+    final today = DateTime.now().toIso8601String().split('T')[0];
+    final occurrences = await getOccurrences(habitId);
+    return occurrences.any(
+      (o) => o.date.startsWith(today) && o.status == HabitStatus.done,
+    );
+  }
+
   Future<List<HabitOccurrence>> getAllOccurrences() async {
     final result = await dbHelper.getAllOccurrences();
     return result.map((map) => HabitOccurrence.fromMap(map)).toList();
   }
-
   // =========================
   // STREAK LOGIC
   // =========================
