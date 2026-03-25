@@ -25,12 +25,12 @@ Use this section to list the specific Project1Q&A questions your team selected f
    - Evidence to Show (code file/commit/UI/screenshot):
 
 2. Question: Which state management technique did you choose (setState, Provider, Riverpod, BLoC) and why?
-   - Category:
+   - Category: We chose setState for state management because our app is relatively small and most of the state is handled within individual pages. It allowed us to update the UI quickly and simply without adding the complexity of more advanced solutions like Provider or BLoC.
    - Team Member Responsible: Herman Acosta
    - Evidence to Show (code file/commit/UI/screenshot):
 
 3. Question: Describe one state-flow interaction from user action to UI update in your app.
-   - Category:
+   - Category: When the user presses the “Done Once” button, the app updates the habit’s completion status and calls setState() to change the button’s state. This causes the button to immediately turn green, visually confirming that the habit was completed for the day.
    - Team Member Responsible: Herman Acosta
    - Evidence to Show (code file/commit/UI/screenshot):
 
@@ -65,12 +65,12 @@ Use this section to list the specific Project1Q&A questions your team selected f
 ```
 
 5. Question: How did you make the interface intuitive and responsive across device sizes/orientations?
-   - Category:
+   - Category: We designed the UI with flexible Flutter layout widgets like Expanded, SizedBox, Column, and Row so elements adjust naturally to different screen sizes and orientations. We also kept the navigation and buttons visually clear and consistent, so the app stays easy to use whether it is opened on a smaller phone screen or a wider display.
    - Team Member Responsible: Herman Acosta
    - Evidence to Show (code file/commit/UI/screenshot):
 
 6. Question: What usability improvement did you make after testing feedback?
-   - Category:
+   - Category: We improved usability by adding a visual confirmation where the “Done Once” button turns green after being pressed, so users immediately know their action was successful. This change came from feedback that it was unclear whether a habit was actually marked complete.
    - Team Member Responsible: Herman Acosta
    - Evidence to Show (code file/commit/UI/screenshot):
 
@@ -127,12 +127,13 @@ Need more page to reach the 5 pages requirement. This page will be used to add a
 ```
 
 9. Question: Walk through one complete feature trace using your actual code: start from a user tap, show the triggering widget, state update logic, data-layer call, and final UI render. Identify the exact files/classes involved at each step.
-   - Category:
+   - Category:A complete feature trace is the Add Habit flow. The user taps the add-habit button in the main page/controller file, which pushes the habit creation screen; after the user submits, the app creates a Habit object, sends it through the repository/database layer to save it, and then returns to the main screen where setState() reloads the habits list so the new habit immediately appears in the UI.
+      
    - Team Member Responsible: Herman Acosta
    - Evidence to Show (code file/commit/UI/screenshot):
 
 10. Question: Present one bug your team introduced and fixed. Show the related commit(s), explain the root cause, why the first approach failed (if applicable), and how the final fix changed runtime behavior.
-   - Category:
+   - Category: One bug we introduced was that newly added or updated habits did not immediately appear correctly on the main screen after navigating back from the add-habit page. The root cause was that the UI state was not being refreshed at the right time, so the first approach saved the data but did not fully rebuild the visible habit list; the final fix was to reload the habits and call setState() after the page returned, which made the new or changed habit show up instantly at runtime.
    - Team Member Responsible: Herman Acosta
    - Evidence to Show (code file/commit/UI/screenshot):
 
@@ -160,7 +161,7 @@ Widget buildAiBox() {
 ```
 
 12. Question: Demonstrate a data integrity scenario (such as duplicate prevention, failed update, delete rollback, or null handling). Explain exactly where validation occurs and how the app prevents inconsistent state.
-   - Category:
+   - Category: One data integrity scenario is time handling when creating a habit. Validation occurs where the habit time is selected and then stored, making sure a valid time value exists before the habit is saved, which prevents habits from being created with missing or invalid reset times and keeps the app’s scheduling logic consistent.
    - Team Member Responsible: Herman Acosta
    - Evidence to Show (code file/commit/UI/screenshot):
 
